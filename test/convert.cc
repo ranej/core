@@ -1,5 +1,6 @@
 #include <PCU.h>
 #include <MeshSim.h>
+#include <SimAdvMeshing.h>
 #include <SimPartitionedMesh.h>
 #include <SimUtil.h>
 #include <apfSIM.h>
@@ -15,9 +16,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-
 #include <getopt.h>
-
 
 static void attachOrder(apf::Mesh* m)
 {
@@ -49,11 +48,13 @@ static void fixPyramids(apf::Mesh2* m)
 const char* gmi_path = NULL;
 const char* gmi_native_path = NULL;
 const char* sms_path = NULL;
-const char* smb_path = NULL;
-int should_log = 0;
-int should_fix_pyramids = 1;
+const char* smsNew_path = NULL;
+int should_log = 1;
+int should_fix_pyramids = 0;
 int should_attach_order = 0;
 bool found_bad_arg = false;
+
+void M_removeSurfaceExtrusionConstraints(pMesh, pPList);
 
 void getConfig(int argc, char** argv) {
 
@@ -68,7 +69,7 @@ void getConfig(int argc, char** argv) {
   };
 
   const char* usage=""
-    "[options] <model file> <simmetrix mesh> <scorec mesh>\n"
+    "[options] <model file> <simmetrix mesh> <modified simmetrix mesh>\n"
     "options:\n"
     "  --no-pyramid-fix                Disable quad-connected pyramid tetrahedronization\n"
     "  --attach-order                  Attach the Simmetrix element order as a Numbering\n"
@@ -106,13 +107,13 @@ void getConfig(int argc, char** argv) {
   int i=optind;
   gmi_path = argv[i++];
   sms_path = argv[i++];
-  smb_path = argv[i++];
+  smsNew_path = argv[i++];
 
   if (!PCU_Comm_Self()) {
     printf ("fix_pyramids %d attach_order %d enable_log %d\n",
             should_fix_pyramids, should_attach_order, should_log);
     printf ("native-model \'%s\' model \'%s\' simmetrix mesh \'%s\' output mesh \'%s\'\n",
-      gmi_native_path, gmi_path, sms_path, smb_path);
+      gmi_native_path, gmi_path, sms_path, smsNew_path);
   }
 }
 
@@ -120,20 +121,14 @@ int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
   PCU_Comm_Init();
-  MS_init();
-  SimModel_start();
-  Sim_readLicenseFile(NULL);
-  SimPartitionedMesh_start(&argc,&argv);
-
   getConfig(argc, argv);
   if( should_log )
     Sim_logOn("convert.sim.log");
-
-  if (should_attach_order && should_fix_pyramids) {
-    if (!PCU_Comm_Self())
-      std::cout << "disabling pyramid fix because --attach-order was given\n";
-    should_fix_pyramids = false;
-  }
+  MS_init();
+  SimAdvMeshing_start();
+  SimModel_start();
+  Sim_readLicenseFile(NULL);
+  SimPartitionedMesh_start(&argc,&argv);
 
   gmi_sim_start();
   gmi_register_sim();
@@ -146,38 +141,20 @@ int main(int argc, char** argv)
   else
     mdl = gmi_load(gmi_path);
   pGModel simModel = gmi_export_sim(mdl);
-  double t0 = PCU_Time();
-  pParMesh sim_mesh = PM_load(sms_path, simModel, progress);
-  double t1 = PCU_Time();
-  if(!PCU_Comm_Self())
-    fprintf(stderr, "read and created the simmetrix mesh in %f seconds\n", t1-t0);
-  apf::Mesh* simApfMesh = apf::createMesh(sim_mesh);
-  double t2 = PCU_Time();
-  if(!PCU_Comm_Self())
-    fprintf(stderr, "created the apf_sim mesh in %f seconds\n", t2-t1);
-  if (should_attach_order) attachOrder(simApfMesh);
-
-  apf::Mesh2* mesh = apf::createMdsMesh(mdl, simApfMesh);
-  double t3 = PCU_Time();
-  if(!PCU_Comm_Self())
-    fprintf(stderr, "created the apf_mds mesh in %f seconds\n", t3-t2);
-
-  apf::printStats(mesh);
-  apf::destroyMesh(simApfMesh);
+  fprintf(stderr, "Read model\n");
+  pMesh sim_mesh = M_load(sms_path, simModel, progress);
+  fprintf(stderr, "Read mesh\n");
+  M_removeSurfaceExtrusionConstraints(sim_mesh, NULL);
+  M_write(sim_mesh, smsNew_path, 0, progress);
+  fprintf(stderr, "Removed surface extrusion constraints\n");
   M_release(sim_mesh);
-  fixMatches(mesh);
-  if (should_fix_pyramids) fixPyramids(mesh);
-  mesh->verify();
-  mesh->writeNative(smb_path);
-
-  mesh->destroyNative();
-  apf::destroyMesh(mesh);
-
+  
   Progress_delete(progress);
   gmi_sim_stop();
   SimPartitionedMesh_stop();
   Sim_unregisterAllKeys();
   SimModel_stop();
+  SimAdvMeshing_stop();
   MS_exit();
   if( should_log )
     Sim_logOff();
