@@ -149,7 +149,9 @@ static void runFromGivenSize(Input& in, apf::Mesh2* m)
   const unsigned idx = 5;
   apf::Field* szFld = sam::specifiedIso(m,"errors",idx);
   PCU_ALWAYS_ASSERT(szFld);
+  //m->writeNative("preAdapt/mesh.smb");
   chef::adapt(m, szFld,in);
+  m->writeNative("adaptedMesh/mesh.smb");
   apf::destroyField(szFld);
 }
 
