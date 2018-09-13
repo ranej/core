@@ -151,7 +151,7 @@ static void runFromGivenSize(Input& in, apf::Mesh2* m)
   PCU_ALWAYS_ASSERT(szFld);
   //m->writeNative("preAdapt/mesh.smb");
   chef::adapt(m, szFld,in);
-  m->writeNative("adaptedMesh/mesh.smb");
+  m->writeNative("adaptedMesh/");
   apf::destroyField(szFld);
 }
 
