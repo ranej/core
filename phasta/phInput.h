@@ -102,7 +102,9 @@ class Input
     double validQuality;
     double adaptErrorThreshold;
     std::string adaptErrorFieldName;
+    std::string adaptHessianFieldName;
     int adaptErrorFieldIndex;
+    int adaptHessianFieldIndex;
     int periodic;
     int prCD;
     int timing;

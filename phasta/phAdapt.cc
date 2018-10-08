@@ -131,6 +131,28 @@ void adaptShrunken(apf::Mesh2* m, double minPartDensity,
     Parma_ShrinkPartition(m, factor, callback);
   }
 }
+    
+static void runFromHessian(Input& in, apf::Mesh2* m)  
+{
+  if (!PCU_Comm_Self()) printf("Hessian based anisotropic adaptation is initiated!\n"); 
+  const char* fieldname = in.adaptHessianFieldName.c_str(); 
+  const unsigned idx = in.adaptHessianFieldIndex;
+  apf::Field* hessian = sam::computeHessian(m,fieldname,idx);
+  if (!PCU_Comm_Self()) printf("computeHessian is done!\n");
+  apf::Field* sz_scale = apf::createLagrangeField(m, "hess_scale", apf::VECTOR, 1);
+  apf::Field* sz_frame = apf::createLagrangeField(m, "hess_frame", apf::MATRIX, 1);
+  if (!PCU_Comm_Self()) printf("computeAnisoSzFromHessian is to be called!\n");
+  sam::computeAnisoSzFromHessian(m,hessian,sz_scale,sz_frame);
+  if (!PCU_Comm_Self()) printf("computeAnisoSzFromHessian is done!\n");
+  PCU_ALWAYS_ASSERT(sz_scale);
+  apf::destroyField(hessian);
+  char outPreAdaptPumiMesh[256];
+  sprintf(outPreAdaptPumiMesh, "preadapt.smb");
+  m->writeNative(outPreAdaptPumiMesh);
+  if (!PCU_Comm_Self()) printf("preadapt mesh write-out is done!\n");
+  apf::destroyField(sz_scale);
+  apf::destroyField(sz_frame);
+}
 
 static void runFromErrorThreshold(Input& in, apf::Mesh2* m)
 {
@@ -171,7 +193,7 @@ void adapt(Input& in, apf::Mesh2* m)
   {0//0
   ,runFromGivenSize//1
   ,runFromErrorThreshold//2
-  ,0//3
+  ,runFromHessian//3
   ,0//4
   ,0//5
   ,chef::adaptLevelSet//6
