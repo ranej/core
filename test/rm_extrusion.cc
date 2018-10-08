@@ -29,7 +29,7 @@ int should_log = 0;
 bool found_bad_arg = false;
 
 
-void M_removeSurfaceExtrusionConstraints(pMesh, pPList);
+void M_removeSurfaceExtrusionConstraints(pUnstructuredMesh, pPList);
 
 
 void getConfig(int argc, char** argv) {
