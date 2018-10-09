@@ -152,6 +152,20 @@ static void runFromGivenSize(Input& in, apf::Mesh2* m)
   PCU_ALWAYS_ASSERT(szFld);
   chef::adapt(m, szFld,in);
   apf::destroyField(szFld);
+  const unsigned iPipeBLFrozen = 0;
+  if(iPipeBLFrozen == 1) {
+    double dist;
+    apf::MeshIterator* it = m->begin(0);
+    apf::MeshEntity* v;
+    while ((v = m->iterate(it))) {
+      apf::Vector3 vCoord;
+      m->getPoint(v, 0, vCoord);
+      dist = sqrt(vCoord[0]*vCoord[0]+vCoord[1]*vCoord[1]);
+      if(dist > 9.0e-3)
+	m->createIntTag("adaptSkipTag",1);
+    }
+    m->end(it);
+  }
 }
 
 void tetrahedronize(Input& in, apf::Mesh2* m)
