@@ -161,7 +161,7 @@ static void runFromGivenSize(Input& in, apf::Mesh2* m)
       apf::Vector3 vCoord;
       m->getPoint(v, 0, vCoord);
       dist = sqrt(vCoord[0]*vCoord[0]+vCoord[1]*vCoord[1]);
-      if(dist > 9.0e-3)
+      if(dist > 9.5e-3)
 	m->createIntTag("adaptSkipTag",1);
     }
     m->end(it);
