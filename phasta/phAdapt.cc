@@ -150,22 +150,33 @@ static void runFromGivenSize(Input& in, apf::Mesh2* m)
   const unsigned idx = 5;
   apf::Field* szFld = sam::specifiedIso(m,"errors",idx);
   PCU_ALWAYS_ASSERT(szFld);
-  chef::adapt(m, szFld,in);
-  apf::destroyField(szFld);
-  const unsigned iPipeBLFrozen = 0;
-  if(iPipeBLFrozen == 1) {
-    double dist;
-    apf::MeshIterator* it = m->begin(0);
-    apf::MeshEntity* v;
-    while ((v = m->iterate(it))) {
+  apf::MeshTag* tag = m->createIntTag("pipeBLAdaptSkip",1);
+  const unsigned iPipeBLAadaptSkip = 1;
+  if(iPipeBLAadaptSkip == 1) {
+    double dist, dist1;
+    int value = 2;
+    apf::MeshIterator* it = m->begin(3); //Loop over mesh tet elements
+    apf::MeshEntity* e;
+    while ((e = m->iterate(it))) {
       apf::Vector3 vCoord;
-      m->getPoint(v, 0, vCoord);
-      dist = sqrt(vCoord[0]*vCoord[0]+vCoord[1]*vCoord[1]);
-      if(dist > 9.5e-3)
-	m->createIntTag("adaptSkipTag",1);
+      dist = 0;
+      dist1 = 0;
+      apf::MeshEntity* verts[4];
+      m->getDownward(e, 0, verts);
+      for (int i = 0; i < 4; i++) //Loop over vertices associated with the tet element
+      {
+        m->getPoint(verts[i], 0, vCoord);
+        dist1 = sqrt(vCoord[0]*vCoord[0]+vCoord[1]*vCoord[1]); //Estiamte the distance from pipe center
+	if(dist < dist1) dist = dist1;
+      }
+      if(dist > 9.5e-3) //Tag the tet if this if condition is true
+	m->setIntTag (e, tag, &value);
     }
     m->end(it);
   }
+  chef::adapt(m, szFld,in);
+  apf::destroyField(szFld);
+  m->destroyTag(tag);
 }
 
 void tetrahedronize(Input& in, apf::Mesh2* m)
