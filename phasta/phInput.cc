@@ -83,6 +83,7 @@ static void setDefaults(Input& in)
   in.nRigidBody = 0;
   in.nRBParam = 12;
   in.gradingFactor = 1.25;
+  in.skipPipeBLAdapt = 0;
 }
 
 Input::Input()
@@ -164,6 +165,7 @@ static void formMaps(Input& in, StringMap& stringMap, IntMap& intMap, DblMap& db
   intMap["nRigidBody"] = &in.nRigidBody;
   intMap["nRBParam"] = &in.nRBParam;
   dblMap["gradingFactor"] = &in.gradingFactor;
+  intMap["skipPipeBLAdapt"] = &in.skipPipeBLAdapt;
 }
 
 template <class T>

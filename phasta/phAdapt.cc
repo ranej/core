@@ -151,8 +151,7 @@ static void runFromGivenSize(Input& in, apf::Mesh2* m)
   apf::Field* szFld = sam::specifiedIso(m,"errors",idx);
   PCU_ALWAYS_ASSERT(szFld);
   apf::MeshTag* tag = m->createIntTag("pipeBLAdaptSkip",1);
-  const unsigned iPipeBLAadaptSkip = 1;
-  if(iPipeBLAadaptSkip == 1) {
+  if(in.skipPipeBLAdapt) {
     double dist, dist1;
     int value = 2;
     apf::MeshIterator* it = m->begin(3); //Loop over mesh tet elements

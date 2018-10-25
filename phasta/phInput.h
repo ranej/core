@@ -189,6 +189,8 @@ class Input
     std::vector<double> rbParamData;
     /** \brief factor \beta used for mesh smooth/gradation */
     double gradingFactor;
+    /** \brief skip the adaptation in pipe BL region during phastaChef */
+    int skipPipeBLAdapt;
 };
 
 int countNaturalBCs(Input& in);
