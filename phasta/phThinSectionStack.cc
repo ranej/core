@@ -68,7 +68,7 @@ void getThinSectionStack(Output& o)
     GFIter gFIter = GM_faceIter(model);
     while((gFace = GFIter_next(gFIter))){
 //    IF gFace has extrusion/thin stack mesh attribute
-  	  bool isBoundaryLayerFace = false;
+  	  bool isThinStackFace = false;
       VIter vIter = M_classifiedVertexIter(mesh, gFace, 1);
       while((vertex = VIter_next(vIter))){
         if(EN_isExtrusionEntity(vertex) == 1){
