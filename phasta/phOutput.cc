@@ -106,7 +106,6 @@ static void getM2GFields(Output& o) {
    like this. I guess PHASTA is ok with a unique
    number for each copy, regardless of part boundary
    sharing...
-
 update: Michel says these global numbers are ignored
         by phasta. get rid of them when you can.
  */
@@ -800,6 +799,84 @@ static void getGCEssentialBCs(Output& o, apf::Numbering* n)
     } // end loop over nodes on a growth curve
     lc = lc + igcnv;
   }
+  
+  
+  static void getTSEssentialBCs(Output& o, apf::Numbering* n)
+{
+  Input& in = *o.in;
+  apf::Mesh* m = o.mesh;
+  if(!in.ensa_melas_dof)
+    return;
+  PCU_Comm_Begin();
+
+  int nec = countEssentialBCs(in);
+  int& ei = o.nEssentialBCNodes;
+
+  apf::Copies remotes;
+  apf::MeshEntity* vent;
+  apf::MeshEntity* base;
+  int ibc = 0;
+  int bibc = 0;
+  int vID = 0;
+  int bID = 0;
+  int k = 0;
+  int ebcStr = 3+2+4+7; // 16; it depends on how BC array is arranged.
+  int ebcEnd = 3+2+4+7+8; // 24; 8 slots for mesh elas BCs
+  int eibcStr = 14; // it depends on how iBC bits are arranged.
+
+// loop over growth curves
+  int lc = 0; // list counter
+  for(int i = 0; i < o.nThinSectionStacks; i++){
+    int iTSnv = o.arrays.iTSnv[i];
+    base = o.arrays.iTSlv[lc];
+    bID = apf::getNumber(n, base, 0, 0);
+    int bMID = o.arrays.nbc[bID]-1; // mapping ID
+    if (bMID < 0){ // no BC on base; skip this growth curve
+      lc = lc + iTSnv;
+      continue;
+    }
+    bibc = o.arrays.ibc[bMID];
+    double* bbc = o.arrays.bc[bMID];
+    for(int j = 1; j < iTSnv; j++){ // skip the base
+      vent = o.arrays.iTSlv[lc+j];
+      vID = apf::getNumber(n, vent, 0, 0);
+      ibc |= (bibc & (1<<eibcStr | 1<<(eibcStr+1) | 1<<(eibcStr+2)));
+      if(o.arrays.nbc[vID] <= 0){ // not in array
+        o.arrays.nbc[vID] = ei + 1;
+        o.arrays.ibc[ei] = ibc;
+        double* bc_new = new double[nec];
+        for(k = 0; k < ebcStr; k++)
+          bc_new[k] = 0;
+        for(k = ebcStr; k < ebcEnd; k++)
+          bc_new[k] = bbc[k];
+        o.arrays.bc[ei] = bc_new;
+        ++ei;
+      }
+      else{
+        o.arrays.ibc[o.arrays.nbc[vID]-1] |= ibc;
+        for(k = ebcStr; k < ebcEnd; k++)
+          o.arrays.bc[o.arrays.nbc[vID]-1][k] = bbc[k];
+      }
+      // top most node
+      if(j == iTSnv - 1 && m->isShared(vent)){
+        m->getRemotes(vent, remotes);
+        APF_ITERATE(apf::Copies, remotes, rit) {
+          PCU_COMM_PACK(rit->first, rit->second);
+          PCU_Comm_Pack(rit->first, &ibc, sizeof(int));
+          PCU_Comm_Pack(rit->first, &(bbc[0]), nec*sizeof(double));
+        }
+      }
+    } // end loop over nodes on a growth curve
+    lc = lc + iTSnv;
+  }
+  
+  
+  
+  
+  
+  
+  
+  
 
 // receive top most node
   PCU_Comm_Send();
